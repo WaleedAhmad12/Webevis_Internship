@@ -1,0 +1,6 @@
+.yolovenv/
+__pycache__/
+
+
+weights/
+data/results
