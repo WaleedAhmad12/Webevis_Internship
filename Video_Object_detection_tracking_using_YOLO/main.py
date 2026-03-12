@@ -1,26 +1,31 @@
 from ultralytics import YOLO
 import cv2
 
+
 class VideoObjectDetection:
 
     def __init__(self, model="yolo11n.pt"):
-    
         self.model = YOLO(model)
 
     def draw_boxes(self, frame, result):
+
+        if result.boxes.id is None:
+            return frame
+
         #target_id = 1
+
         for box, cls, conf, obj_id in zip(
                 result.boxes.xyxy,
                 result.boxes.cls,
                 result.boxes.conf,
-                getattr(result.boxes, 'id', [])
+                result.boxes.id,
         ):
-            
+            #getattr(result.boxes, 'id', [])
             #if int(obj_id) != target_id:
              #   continue  
-            
+
             x1, y1, x2, y2 = map(int, box)
-            label = f"{self.model.names[int(cls)]} {conf:.2f} ID:{obj_id}"
+            label = f"{self.model.names[int(cls)]} {conf:.2f} ID:{int(obj_id)}"
 
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
             cv2.putText(frame, label, (x1, y1 - 10),
@@ -39,24 +44,27 @@ class VideoObjectDetection:
         fps = cap.get(cv2.CAP_PROP_FPS)
         out = None
 
-        results = self.model.track(
-            source=input_path,
-            conf=0.2,
-            classes=[0, 2],
-            iou = 0.5,  
-            show=False,      
-        )
+        while True:
 
-        for result in results:
-            frame = result.orig_img
+            ret, frame = cap.read()
+
+            if not ret:
+                break
 
             if out is None:
                 height, width = frame.shape[:2]
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
                 out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
-            frame = self.draw_boxes(frame, result)
+            result = self.model.track(
+                frame,
+                persist=True,
+                conf=0.2,
+                classes=[0, 2],
+                iou=0.5,
+            )[0]
 
+            frame = self.draw_boxes(frame, result)
             out.write(frame)
 
         cap.release()
@@ -65,13 +73,14 @@ class VideoObjectDetection:
 
 
 if __name__ == "__main__":
-    input_video = "videos/test.mp4"
+
+    input_video  = "videos/test.mp4"
     output_video = "result_videos/output_test.mp4"
 
-    input_video2 = "videos/video2.mp4"
+    input_video2  = "videos/video2.mp4"
     output_video2 = "result_videos/output_test2.mp4"
 
     detector = VideoObjectDetection()
 
-    detector.process_video(input_video, output_video)
+    detector.process_video(input_video,  output_video)
     detector.process_video(input_video2, output_video2)
