@@ -129,3 +129,36 @@ def run_prediction(model_path: str, image_path: str, imgsz: int, conf: float, sa
         print(f"Saved to: {output_path}")
 
     return results
+
+
+
+import easyocr
+import cv2
+
+reader = easyocr.Reader(['en'], gpu=False)  # set gpu=True if you have CUDA
+
+def run_ocr_on_results(results, image_path):
+    image = cv2.imread(image_path)
+
+    for result in results:
+        boxes = result.boxes.xyxy.cpu().numpy()
+        confidences = result.boxes.conf.cpu().numpy()
+
+        for box, conf in zip(boxes, confidences):
+            x1, y1, x2, y2 = map(int, box)
+
+            # Crop the detected plate region
+            plate_crop = image[y1:y2, x1:x2]
+
+            # Preprocess — resize and binarize for better OCR
+            plate_crop = cv2.resize(plate_crop, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+            gray = cv2.cvtColor(plate_crop, cv2.COLOR_BGR2GRAY)
+            _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+            # Run OCR
+            text = reader.readtext(binary, detail=0)
+            plate_text = ' '.join(text).upper().strip()
+
+            print(f"Detected Plate : {plate_text} | YOLO Confidence : {conf:.2f}")
+
+    return results

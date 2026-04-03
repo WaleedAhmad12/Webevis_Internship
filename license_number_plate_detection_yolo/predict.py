@@ -1,5 +1,5 @@
 from utils.args import parse_predict_args
-from utils.utils import get_model, download_image, run_prediction
+from utils.utils import get_model, download_image, run_ocr_on_results, run_prediction
 
 
 def main():
@@ -7,7 +7,7 @@ def main():
 
     image_path = download_image(args.image, args.image_output)
     model_path = get_model(args.weights)
-    run_prediction(
+    results = run_prediction(
         model_path=model_path,
         image_path=image_path,
         imgsz=args.imgsz,
@@ -15,6 +15,9 @@ def main():
         save=args.save,
     )
 
+
+
+    run_ocr_on_results(results, image_path)
 
 if __name__ == "__main__":
     main()
